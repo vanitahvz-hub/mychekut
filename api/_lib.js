@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-const API_VERSION = "2024-01";
+const API_VERSION = "2026-07";
 
 export function db() {
   const url = process.env.SUPABASE_URL;
