@@ -5,19 +5,15 @@ const API_VERSION = "2026-07";
 export function db() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
-  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SECRET_KEY manquants dans les variables Vercel");
+  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SECRET_KEY manquants");
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-// ---- Auth ----
 export function checkAuth(req, res) {
   const expected = process.env.APP_PASSWORD;
   if (!expected) return true;
   const got = req.headers["x-app-password"] || "";
-  if (got !== expected) {
-    res.status(401).json({ error: "UNAUTHORIZED" });
-    return false;
-  }
+  if (got !== expected) { res.status(401).json({ error: "UNAUTHORIZED" }); return false; }
   return true;
 }
 
@@ -30,7 +26,29 @@ export function readBody(req) {
   });
 }
 
-// ---- Shopify ----
+export function getAppCredentials() {
+  return {
+    clientId: process.env.SHOPIFY_CLIENT_ID,
+    clientSecret: process.env.SHOPIFY_CLIENT_SECRET,
+  };
+}
+
+export function getInstallUrl(domain, clientId, redirectUri) {
+  const scopes = "read_shopify_payments_payouts,read_shopify_payments_accounts,read_shopify_payments_disputes,read_orders,read_products,write_products,read_themes,write_themes,read_customers,read_analytics";
+  return `https://${domain}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+}
+
+export async function exchangeToken(domain, clientId, clientSecret, code) {
+  const r = await fetch(`https://${domain}/admin/oauth/access_token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret, code }),
+  });
+  if (!r.ok) throw new Error("TOKEN_EXCHANGE_FAILED");
+  const j = await r.json();
+  return j.access_token;
+}
+
 export async function shopifyGraphQL(domain, token, query, variables = {}) {
   const url = `https://${domain}/admin/api/${API_VERSION}/graphql.json`;
   const r = await fetch(url, {
